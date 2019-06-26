@@ -1,0 +1,115 @@
+---
+output:
+  word_document: default
+  html_document: default
+---
+# Module 4 Assignment 2
+## Bass, Robert
+### Random Forests
+
+
+Libraries
+```{r}
+library(tidyverse)
+library(caret)
+library(ranger)
+```
+
+
+Reading in the data
+```{r}
+blood_original <- read_csv("Blood.csv")
+```
+
+
+Converting variables
+```{r}
+blood <- blood_original %>%
+  mutate(DonatedMarch = as_factor(as.character(DonatedMarch))) %>%
+  mutate(DonatedMarch = fct_recode(DonatedMarch, "No" = "0", "Yes" = "1"))
+str(blood)
+summary(blood)
+```
+
+
+Task 1
+
+Split the data set into training and testing sets
+```{r}
+set.seed(1234)
+train.rows <- createDataPartition(y = blood$DonatedMarch, p = 0.7, list = FALSE)
+train <- blood[train.rows,]
+test <- blood[-train.rows,]
+```
+
+
+Task 2
+
+Create a random forest model
+```{r}
+fit_control <- trainControl(method = "cv", number = 10)
+set.seed(123)
+rf_fit <- train(x = as.matrix(train[,-5]), y = as.matrix(train$DonatedMarch),    
+                method = "ranger",  
+                importance = "permutation",
+                trControl = fit_control,
+                num.trees = 100)
+```
+
+
+Task 3:
+
+Random Forest details using varImp
+```{r}
+varImp(rf_fit)
+rf_fit
+```
+
+The most important variable in this model is "Total_Donated" and the least important variable being "Mths_Since_Last".
+
+
+Task 4
+
+Predictions
+```{r}
+predRF <- predict(rf_fit, train)
+head(predRF)
+```
+
+
+Task 5
+
+Confusion Matrix
+```{r}
+confusionMatrix(predRF, train$DonatedMarch, positive = "Yes")
+```
+
+Accuracy is 0.91, naive is 0.76 with a p-value < .05. Sensitivity is .65 and specificity is .99.
+
+
+Task 6
+
+This model is a large improvement with an accuracy of 0.91 and a naive score of 0.76 with the p-value < .05.  This model is more accurate because we used a k-fold of 10 then developed 100 decision trees with an output of the best model.
+
+
+Task 7
+
+Predictions on the test set
+```{r}
+predRF_test <- predict(rf_fit, newdata = test)
+head(predRF_test)
+```
+
+
+Confusion Matrix on the test set
+```{r}
+confusionMatrix(predRF_test, test$DonatedMarch, positive = "Yes")
+```
+
+
+Accuracy is 0.7768, naive is 0.7634 with a p-value > .05. Sensitivity is .28 and specificity is .93.  The accuracy is improved, which is a good thing.  The sensitivity is very low which could cause some concern.  This is an OK model.
+
+
+Task 8
+
+This model could be used in the real world for blood drives. Marketing strategies could be used with this data, targeting people who have already donated the most blood first, since they are more likely to come back.  The concerns I have with this model is the very low sensitivity score (this could lead to incorrectly detecting positives) and the large p-value. This model still has an improved accuracy than a naive model which is good. This model would be OK to use depending on its applications.  In regards to getting the word out about blood donations and to attempt to get more people to donate, this model is fine. If this model was being used for funding purposes, like obtaining grant money for example, I would be hesitant.
